@@ -1,6 +1,6 @@
 {
   "name": "unstrungify",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Walk a hierarchical object as JSON.stringify does but without serializing.",
   "main": "index.js",
   "scripts": {

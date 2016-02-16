@@ -2,6 +2,13 @@
 
 'use strict';
 
+/**
+ * Very fast array test.
+ * For cross-frame scripting; use `crossFramesIsArray` instead.
+ * @param {*} arr - The object to test.
+ * @returns {boolean}
+ */
+unstrungify.isArray = function(arr) { return arr.constructor === Array; };
 
 /**
  * @summary Walk a hierarchical object as JSON.stringify does but without serializing.
@@ -16,20 +23,22 @@
  *
  * @this {*|object|*[]} - Object to walk; typically an object or array.
  *
- * @param {boolean} [options.preserve=false] - Preserve undefined array elements as `null`s.
+ * @param {boolean} [options.nullElements==false] - Preserve undefined array elements as `null`s.
  * Use this when precise index matters (not merely the order of the elements).
+ *
+ * @param {boolean} [options.nullProperties==false] - Preserve undefined object properties as `null`s.
  *
  * @returns {object} - Distilled object.
  */
 function unstrungify(options) {
-    var clone, value,
-        object = (typeof this.toJSON === 'function') ? this.toJSON() : this,
-        preserve = options && options.preserve;
+    var clone, preserve,
+        object = (typeof this.toJSON === 'function') ? this.toJSON() : this;
 
     if (unstrungify.isArray(object)) {
         clone = [];
+        preserve = options && options.nullElements;
         object.forEach(function(obj) {
-            value = unstrungify.call(obj);
+            var value = unstrungify.call(obj);
             if (value !== undefined) {
                 clone.push(value);
             } else if (preserve) {
@@ -38,10 +47,16 @@ function unstrungify(options) {
         });
     } else  if (typeof object === 'object') {
         clone = {};
+        preserve = options && options.nullProperties;
         Object.keys(object).forEach(function(key) {
-            value = unstrungify.call(object[key]);
+            var value = object[key];
+            if (value !== undefined) {
+                value = unstrungify.call(object[key]);
+            }
             if (value !== undefined) {
                 clone[key] = value;
+            } else if (preserve) {
+                clone[key] = null; // undefined not a valid JSON value
             }
         });
     } else {
@@ -52,17 +67,6 @@ function unstrungify(options) {
 }
 
 /**
- * Very fast array test.
- * For cross-frame scripting; use `crossFramesIsArray` instead.
- * @param {*} arr - The object to test.
- * @returns {boolean}
- */
-function isArray(arr) { return arr.constructor === Array; }
-unstrungify.isArray = isArray;
-
-var toString = Object.prototype.toString, arrString = '[object Array]';
-
-/**
  * Very slow array test. Suitable for cross-frame scripting.
  *
  * Suggestion: If you need this and have jQuery loaded, use `jQuery.isArray` instead which is reasonably fast.
@@ -70,6 +74,8 @@ var toString = Object.prototype.toString, arrString = '[object Array]';
  * @param {*} arr - The object to test.
  * @returns {boolean}
  */
-function crossFramesIsArray(arr) { return toString.call(arr) === arrString; } // eslint-disable-line no-unused-vars
+unstrungify.crossFramesIsArray = function(arr) { return toString.call(arr) === arrString; }; // eslint-disable-line no-unused-vars
+
+var toString = Object.prototype.toString, arrString = '[object Array]';
 
 module.exports = unstrungify;
